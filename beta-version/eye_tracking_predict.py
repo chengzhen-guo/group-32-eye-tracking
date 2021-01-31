@@ -7,6 +7,9 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_predict
 
+from sklearn.neural_network import MLPClassifier
+from sklearn.datasets import make_classification
+
 cam = cv2.VideoCapture(0)
 cam.set(3, 1920)
 cam.set(4, 1080)
@@ -49,8 +52,12 @@ feature_data = df.loc[:, 'left_pupil_x' : 'nose_tip_y']
 target_data_x = df.loc[:, ['target_x']]
 target_data_y = df.loc[:, ['target_y']]
 
-linreg_x = LinearRegression().fit(feature_data, target_data_x)
-linreg_y = LinearRegression().fit(feature_data, target_data_y)
+#linreg_x = LinearRegression().fit(feature_data, target_data_x)
+#linreg_y = LinearRegression().fit(feature_data, target_data_y)
+
+clf_x = MLPClassifier(random_state=1, max_iter=300).fit(feature_data, target_data_x)
+clf_y = MLPClassifier(random_state=1, max_iter=300).fit(feature_data, target_data_y)
+
 
 file = open('eye_data.csv', 'a+')
 
@@ -68,11 +75,6 @@ def draw_point(frame):
     return frame
 
 def detect_pupil(frame, which = 'left'):
-    # filter light by color
-    # roi[:,:,0] = 0
-    # roi[:,:,1] = 0
-    # roi[:,:,2] = 0
-
     
     roi = frame.copy()
 
@@ -254,8 +256,12 @@ while True:
             missing = True
     if not missing:
         frame_df = pd.DataFrame([current_data])
-        pred_x = linreg_x.predict(frame_df)
-        pred_y = linreg_y.predict(frame_df)
+        
+        #pred_x = linreg_x.predict(frame_df)
+        #pred_y = linreg_y.predict(frame_df)
+
+        pred_x = clf_x.predict(frame_df)
+        pred_y = clf_y.predict(frame_df)
         
         if len(pred_list) < 10:
             pred_list.append((pred_x, pred_y))

@@ -234,12 +234,14 @@ def log_data():
             print()
             return
         
-    data_list.append(current_data)
-
-    image_l.append(image_left)
-    image_r.append(image_right)
-    image_name_l.append(str(data_id) + '_l.jpg')
-    image_name_r.append(str(data_id) + '_r.jpg')
+    line = ''
+    for j in current_data:
+        line += str(current_data[j]) + ','
+    line += str(new_target[0]) + ','
+    line += str(new_target[1]) + '\n'
+    file.write(line)
+    cv2.imwrite('eye_images/' + str(data_id) + '_l.jpg', image_left)
+    cv2.imwrite('eye_images/' + str(data_id) + '_r.jpg', image_right)
     
     #cv2.imwrite(str(data_id) + '_l', image_left)
     #cv2.imwrite(str(data_id) + '_r', image_right)
@@ -307,13 +309,11 @@ while True:
         animation_continue = not animation_continue
     
     frame = cv2.flip(frame, 1)
-    
-    frame = draw_point(frame)
 
     if do_collect:
         frame = log_face(frame)    
         log_data()
-    
+    frame = draw_point(frame)
     cv2.imshow("test", frame)
     
 cam.release()
@@ -321,7 +321,7 @@ cv2.destroyAllWindows()
 
 print()
 print('Recording data...')
-
+'''
 for i in range(len(data_list)):
     line = ''
     for j in data_list[i]:
@@ -331,7 +331,7 @@ for i in range(len(data_list)):
     file.write(line)
     cv2.imwrite('eye_images/' + image_name_l[i], image_l[i])
     cv2.imwrite('eye_images/' + image_name_r[i], image_r[i])
-
+'''
 file.close()
 
 '''
