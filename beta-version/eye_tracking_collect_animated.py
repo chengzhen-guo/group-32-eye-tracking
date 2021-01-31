@@ -25,8 +25,13 @@ cv2.setWindowProperty("test", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 data_list = []
 target_x = []
 target_y = []
+image_l = []
+image_r = []
+image_name_l = []
+image_name_r = []
 
-current_data = {        
+current_data = {
+    'id': None,
     'left_pupil_x' : None,
     'left_pupil_y' : None,
     'right_pupil_x' : None,
@@ -59,6 +64,11 @@ animation_continue = False
 file = open('eye_data.csv', 'a+')
 
 read_file = open('eye_data.csv', 'r')
+
+data_id = len(read_file.read().split('\n'))
+
+image_left = None
+image_right = None
 
 if len(read_file.read()) < 1:
 #if len(file.read()) < 1:
@@ -104,20 +114,12 @@ def draw_point(frame):
     cv2.line(frame, (x - 20, y + 20), (x + 20, y - 20), (0, 255, 0), 5)
     return frame
 
-def detect_pupil(frame, which = 'left'):
-    # filter light by color
-    # roi[:,:,0] = 0
-    # roi[:,:,1] = 0
-    # roi[:,:,2] = 0
-    
+def detect_pupil(frame, which = 'left'):    
     roi = frame.copy()
-
     threshold_value = 40
     rows, cols, _ = roi.shape
     gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-
-    for i in range(2):
-        
+    for i in range(2):        
         _, threshold = cv2.threshold(gray_roi, threshold_value, 255, cv2.THRESH_BINARY_INV)
         contours, hierarchy = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)    
         contours = sorted(contours, key=lambda x: cv2.contourArea(x), reverse=True)        
@@ -127,13 +129,7 @@ def detect_pupil(frame, which = 'left'):
             cv2.rectangle(roi, (x, y), (x + w, y + h), (255, 0, 0), 2)
             cv2.line(roi, (x + int(w/2), 0), (x + int(w/2), rows), (0, 255, 0), 2)
             cv2.line(roi, (0, y + int(h/2)), (cols, y + int(h/2)), (0, 255, 0), 2)
-            # cv2.imshow("Threshold", threshold)
-            # cv2.imshow("gray roi", gray_roi)
-            # cv2.imshow("Roi", roi)
             return (x, y)
-        # cv2.imshow("Threshold", threshold)
-        # cv2.imshow("gray roi", gray_roi)
-        # cv2.imshow("Roi", roi)
         print('Increading threshold value:')
         print(threshold_value, end=' -> ')
         threshold_value += 10
@@ -141,6 +137,7 @@ def detect_pupil(frame, which = 'left'):
     return None
 
 def cut_img_detect_pupil(frame, location, which = 'left'):
+    global image_left, image_right
     current_data[which + '_eye_x_min'] = location[0]
     current_data[which + '_eye_x_max'] = location[1]
     current_data[which + '_eye_y_min'] = location[2]
@@ -155,7 +152,11 @@ def cut_img_detect_pupil(frame, location, which = 'left'):
     if pupil_mark:
         pupil_position = (pupil_mark[0] + location[0], pupil_mark[1] + location[1])
         mark_eyes(frame, location)
-        return pupil_position
+        if which == 'left':
+            image_left = frame[location[1]:location[3], location[0]:location[2]]
+        else:
+            image_right = frame[location[1]:location[3], location[0]:location[2]]
+        return pupil_position    
     return None
 
 def locate_face_landmarks(face_landmarks, name):
@@ -199,7 +200,8 @@ def log_eyes(left_eye, right_eye):
 
 def refresh_current_data():
     global current_data
-    current_data = {        
+    current_data = {
+        'id' : data_id,
         'left_pupil_x' : None,
         'left_pupil_y' : None,
         'right_pupil_x' : None,
@@ -223,7 +225,7 @@ def refresh_current_data():
     }
 
 def log_data():    
-    global new_target, animation_continue
+    global new_target, animation_continue, data_id
     for i in current_data:
         if not current_data[i]:
             refresh_current_data()
@@ -231,13 +233,24 @@ def log_data():
             print(current_data)
             print()
             return
+        
     data_list.append(current_data)
+
+    image_l.append(image_left)
+    image_r.append(image_right)
+    image_name_l.append(str(data_id) + '_l.jpg')
+    image_name_r.append(str(data_id) + '_r.jpg')
+    
+    #cv2.imwrite(str(data_id) + '_l', image_left)
+    #cv2.imwrite(str(data_id) + '_r', image_right)
+    
     target_x.append(new_target[0])
-    target_y.append(new_target[1])
+    target_y.append(new_target[1])    
     
     animation_continue = True
     generate_animation_point()
-    
+
+    data_id += 1
     refresh_current_data()
     #print('Data added!')
 
@@ -278,7 +291,7 @@ def log_face(frame):
         y = int((other_loc[1] + other_loc[3]) / 2)
         current_data[name + '_x'] = x
         current_data[name + '_y'] = y
-        frame =  mark_point(frame, x, y)    
+        frame =  mark_point(frame, x, y)
     return frame
 
 while True:
@@ -316,6 +329,14 @@ for i in range(len(data_list)):
     line += str(target_x[i]) + ','
     line += str(target_y[i]) + '\n'
     file.write(line)
+    cv2.imwrite('eye_images/' + image_name_l[i], image_l[i])
+    cv2.imwrite('eye_images/' + image_name_r[i], image_r[i])
 
 file.close()
 
+'''
+image_l.append(image_left)
+image_r.append(image_right)
+image_name_l.append(str(data_id) + '_l.jpg')
+image_name_r.append(str(data_id) + '_r.jpg')
+'''
