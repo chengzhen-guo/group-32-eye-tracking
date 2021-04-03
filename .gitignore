@@ -5,3 +5,6 @@
 .vs/*
 *.pyproj
 *.sln
+
+#python cache file
+*.pyc
