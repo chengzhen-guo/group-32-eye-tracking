@@ -1,0 +1,7 @@
+# pycharm setting files
+.idea/*
+
+# vs setting files
+.vs/*
+*.pyproj
+*.sln
