@@ -242,6 +242,88 @@ def log_face(frame):
         frame =  mark_point(frame, x, y)    
     return frame
 
+def warp_perspective_matrix(src, dst):
+    assert src.shape[0] == dst.shape[0] and src.shape[0] >= 4
+    
+    nums = src.shape[0]
+    A = np.zeros((2*nums, 8))
+    B = np.zeros((2*nums, 1))
+    for i in range(0, nums):
+        A_i = src[i,:]
+        B_i = dst[i,:]
+        A[2*i,:] = [A_i[0],A_i[1],1,0,0,0,-A_i[0]*B_i[0],-A_i[1]*B_i[0]]
+        B[2*i] = B_i[0]
+        
+        A[2*i+1,:] = [0,0,0,A_i[0], A_i[1],1,-A_i[0]*B_i[1], -A_i[1]*B_i[1]]
+        B[2*i+1] = B_i[1]
+ 
+
+    A = np.mat(A)
+    warpMatrix = A.I * B #Get the a_11, a_12, a_13, a_21, a_22, a_23, a_31, a_32
+    
+
+    warpMatrix = np.array(warpMatrix).T[0]
+    warpMatrix = np.insert(warpMatrix, warpMatrix.shape[0], values=1.0, axis=0) #input a_33 = 1
+    warpMatrix = warpMatrix.reshape((3, 3))
+    return warpMatrix
+
+four_point_collect = []
+four_point_target = [[30, 30], [1890, 30], [30, 1050], [1890, 1050]]
+
+point_collect = []
+
+while len(four_point_collect) < 4:
+
+    new_target = four_point_target[len(four_point_collect)]
+    
+    ret, frame = cam.read()
+    frame = cv2.flip(frame, 1)
+    
+    frame = log_face(frame)
+    
+    missing = False
+    for i in current_data:
+        if not current_data[i]:
+            missing = True
+    if not missing:
+        frame_df = pd.DataFrame([current_data])
+        pred_x = linreg_x.predict(frame_df)
+        pred_y = linreg_y.predict(frame_df)
+        
+        if len(pred_list) < 10:
+            pred_list.append((pred_x, pred_y))
+            new_target = (pred_x, pred_y)
+        else: 
+            pred_list[pred_idx] = (pred_x, pred_y)
+            pred_idx = (1 + pred_idx) % 10
+            sum_x = 0
+            sum_y = 0
+            for i in pred_list:
+                sum_x += i[0]
+                sum_y += i[1]
+            mean_x = int(sum_x / 10)
+            mean_y = int(sum_y / 10)
+            point_collect = [mean_x, mean_y]
+            
+
+    frame = draw_point(frame)
+    
+    k = cv2.waitKey(1)
+    
+    if k%256 == 32:
+        four_point_collect.append(point_collect)
+        print(point_collect)
+        
+    if k%256 == 27:
+        # ESC pressed
+        print("Escape hit, closing...")
+        break
+    cv2.imshow("test", frame)
+
+warp_matrix = warp_perspective_matrix(np.array(four_point_target), np.array(four_point_collect))
+
+print(warp_matrix)
+
 while True:
     ret, frame = cam.read()
     frame = cv2.flip(frame, 1)
@@ -270,7 +352,12 @@ while True:
                 sum_y += i[1]
             mean_x = int(sum_x / 10)
             mean_y = int(sum_y / 10)
-            new_target = (mean_x, mean_y)
+            
+            fixed_point = np.dot(warp_matrix, np.array([[mean_x], [mean_y], [1]]))
+            
+            new_target = (fixed_point[0], fixed_point[1])            
+
+            print([mean_x, mean_y], '->', new_target)
         
 
     frame = draw_point(frame)
