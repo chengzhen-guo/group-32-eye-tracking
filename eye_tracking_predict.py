@@ -320,9 +320,11 @@ while len(four_point_collect) < 4:
         break
     cv2.imshow("test", frame)
 
-warp_matrix = warp_perspective_matrix(np.array(four_point_target), np.array(four_point_collect))
+warp_matrix = warp_perspective_matrix(np.array(four_point_collect), np.array(four_point_target))
 
 print(warp_matrix)
+
+do_warp_fix = True
 
 while True:
     ret, frame = cam.read()
@@ -352,17 +354,21 @@ while True:
                 sum_y += i[1]
             mean_x = int(sum_x / 10)
             mean_y = int(sum_y / 10)
-            
-            fixed_point = np.dot(warp_matrix, np.array([[mean_x], [mean_y], [1]]))
-            
-            new_target = (fixed_point[0], fixed_point[1])            
 
-            print([mean_x, mean_y], '->', new_target)
-        
+            if do_warp_fix:
+                fixed_point = np.dot(warp_matrix, np.array([[mean_x], [mean_y], [1]]))
+                new_target = (fixed_point[0], fixed_point[1])
+            else:
+                new_target = (mean_x, mean_y)
+                
+            print([mean_x, mean_y], '->', new_target)        
 
     frame = draw_point(frame)
     
     k = cv2.waitKey(1)
+    if k%256 == 32:
+        do_warp_fix = not do_warp_fix
+        print("do_warp_fix:", do_warp_fix)
     if k%256 == 27:
         # ESC pressed
         print("Escape hit, closing...")
