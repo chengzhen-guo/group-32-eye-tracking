@@ -7,6 +7,7 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_predict
 import win32api, win32con, win32gui
+import time
 
 cam = cv2.VideoCapture(0)
 cam.set(3, 1920)
@@ -249,6 +250,8 @@ win_y = 0
 adj_x = 0
 adj_y = 0
 
+list_len = 50
+
 def reset_cursor():
     global win_x, win_y
     flags, hcursor, (win_x, win_y) = win32gui.GetCursorInfo()
@@ -269,19 +272,19 @@ while True:
         frame_df = pd.DataFrame([current_data])
         pred_x = linreg_x.predict(frame_df)
         pred_y = linreg_y.predict(frame_df)        
-        if len(pred_list) < 20:
+        if len(pred_list) < list_len:
             pred_list.append((pred_x, pred_y))
             new_target = (pred_x, pred_y)
         else: 
             pred_list[pred_idx] = (pred_x, pred_y)
-            pred_idx = (1 + pred_idx) % 20
+            pred_idx = (1 + pred_idx) % list_len
             sum_x = 0
             sum_y = 0
             for i in pred_list:
                 sum_x += i[0]
                 sum_y += i[1]
-            mean_x = int(sum_x / 20)
-            mean_y = int(sum_y / 20)
+            mean_x = int(sum_x / list_len)
+            mean_y = int(sum_y / list_len)
 
             new_target = (mean_x, mean_y)
 
@@ -294,10 +297,24 @@ while True:
                     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,0,0)
                 else:
                     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,0,0)
+                
+                
             else:
                 flags, hcursor, (win_x, win_y) = win32gui.GetCursorInfo()
                 adj_x = mean_x - win_x
                 adj_y = mean_y - win_y
+
+            if win32api.GetAsyncKeyState(win32con.VK_LMENU):
+                win32api.SetCursorPos((1920 // 2, 1080 // 2))
+
+            if win32api.GetAsyncKeyState(win32con.VK_CAPITAL): #VK_LMENU
+                    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,0,0)
+                    time.sleep(.1)
+                    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,0,0)
+                    time.sleep(.1)
+                    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,0,0)
+                    time.sleep(.1)
+                    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,0,0)
     
     
 cam.release()
